@@ -10,6 +10,7 @@
   },
   "devDependencies": {
     "bottom-tip": "^0.1.2",
+    "dayjs": "^1.10.7",
     "url-parse": "^1.5.3",
     "vite": "^2.6.14"
   },
