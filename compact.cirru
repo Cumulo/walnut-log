@@ -1,7 +1,7 @@
 
 {} (:package |app)
   :configs $ {} (:init-fn |app.client/main!) (:reload-fn |app.client/reload!)
-    :modules $ [] |respo.calcit/ |lilac/ |recollect/ |memof/ |respo-ui.calcit/ |ws-edn.calcit/ |cumulo-util.calcit/ |respo-message.calcit/ |cumulo-reel.calcit/ |alerts.calcit/
+    :modules $ [] |respo.calcit/ |lilac/ |recollect/ |memof/ |respo-ui.calcit/ |ws-edn.calcit/ |cumulo-util.calcit/ |respo-message.calcit/ |cumulo-reel.calcit/ |alerts.calcit/ |respo-markdown.calcit/
     :version |0.0.1
   :entries $ {}
     :server $ {} (:port 6001) (:storage-key |calcit.cirru) (:init-fn |app.server/main!) (:reload-fn |app.server/reload!)
@@ -26,6 +26,7 @@
           app.comp.issue :refer $ comp-issues-list
           respo-alerts.core :refer $ use-prompt
           "\"dayjs" :default dayjs
+          respo-md.comp.md :refer $ comp-md-block
       :defs $ {}
         |comp-container $ quote
           defcomp comp-container (states store)
@@ -49,13 +50,16 @@
                           merge ui/expand $ {} (:padding "\"8px")
                         comp-issues-list (>> states :list)
                           get-in router $ [] :data :issues
+                        =< nil 100
                       :issue $ let
                           issue $ get-in router ([] :data :issue)
                         div
-                          {} $ :style ({})
+                          {} $ :style
+                            merge ui/expand $ {}
                           comp-issue-page
                             >> states $ :id issue
                             , issue
+                          =< nil 100
                       :profile $ comp-profile (:user store) (:data router)
                     comp-login $ >> states :login
                   comp-status-color $ :color store
@@ -171,7 +175,7 @@
                     :border $ str "\"1px solid " (hsl 0 0 90)
                     :padding "\"4px 8px"
                 div ({})
-                  <> $ :content log
+                  comp-md-block (:content log) ({})
                   =< 16 nil
                   a $ {} (:style ui/link) (:inner-text "\"Edit")
                     :on-click $ fn (e d!)
@@ -182,7 +186,9 @@
                             :id $ :id log
                             :issue-id issue-id
                             :content text
-                div ({})
+                div
+                  {} $ :style
+                    {} $ :color (hsl 0 0 80)
                   <> $ str "\"time: "
                     -> (:created-time log) (dayjs) (.!format "\"MM-DD HH:mm")
                 .render content-plugin
@@ -555,14 +561,16 @@
             div
               {} $ :style
                 {} (:min-height 40)
-                  :border $ str "\"1px solid " (hsl 0 0 90)
+                  :border-bottom $ str "\"1px solid " (hsl 0 0 94)
               div
                 {} $ :on-click
                   fn (e d!)
                     d! :router/change $ {} (:name :issue)
                       :data $ :id issue
                 <> $ :content issue
-              div ({})
+              div
+                {} $ :style
+                  {} $ :color (hsl 0 0 80)
                 <> $ -> (:created-time issue) (dayjs) (.!format "\"MM-DD HH:mm")
                 =< 16 nil
                 <> $ str "\"Solved: " (:solved? issue)
