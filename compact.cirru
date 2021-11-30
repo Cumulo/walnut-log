@@ -1,7 +1,7 @@
 
 {} (:package |app)
   :configs $ {} (:init-fn |app.client/main!) (:reload-fn |app.client/reload!)
-    :modules $ [] |respo.calcit/ |lilac/ |recollect/ |memof/ |respo-ui.calcit/ |ws-edn.calcit/ |cumulo-util.calcit/ |respo-message.calcit/ |cumulo-reel.calcit/
+    :modules $ [] |respo.calcit/ |lilac/ |recollect/ |memof/ |respo-ui.calcit/ |ws-edn.calcit/ |cumulo-util.calcit/ |respo-message.calcit/ |cumulo-reel.calcit/ |alerts.calcit/ |respo-markdown.calcit/
     :version |0.0.1
   :entries $ {}
     :server $ {} (:port 6001) (:storage-key |calcit.cirru) (:init-fn |app.server/main!) (:reload-fn |app.server/reload!)
@@ -10,9 +10,9 @@
     |app.comp.container $ {}
       :ns $ quote
         ns app.comp.container $ :require
-          hsl.core :refer $ hsl
+          respo-ui.core :refer $ hsl
           respo-ui.core :as ui
-          respo.core :refer $ defcomp <> >> div span button input pre
+          respo.core :refer $ defcomp <> >> div span button input list-> pre a
           respo.comp.inspect :refer $ comp-inspect
           respo.comp.space :refer $ =<
           app.comp.navigation :refer $ comp-navigation
@@ -23,6 +23,10 @@
           app.config :refer $ dev?
           app.schema :as schema
           app.config :as config
+          app.comp.issue :refer $ comp-issues-list
+          respo-alerts.core :refer $ use-prompt
+          "\"dayjs" :default dayjs
+          respo-md.comp.md :refer $ comp-md-block
       :defs $ {}
         |comp-container $ quote
           defcomp comp-container (states store)
@@ -38,18 +42,24 @@
               if (nil? store) (comp-offline)
                 div
                   {} $ :style (merge ui/global ui/fullscreen ui/column)
-                  comp-navigation (:logged-in? store) (:count store)
+                  comp-navigation (>> states :nav) (:logged-in? store) (:count store)
                   if (:logged-in? store)
                     case-default (:name router) (<> router)
                       :home $ div
                         {} $ :style
                           merge ui/expand $ {} (:padding "\"8px")
-                        input $ {} (:style ui/input)
-                          :value $ :demo state
-                        =< 8 nil
-                        <> "\"demo page"
-                        pre $ {}
-                          :inner-text $ str "\"backend data" (format-cirru-edn store)
+                        comp-issues-list (>> states :list)
+                          get-in router $ [] :data :issues
+                        =< nil 100
+                      :issue $ let
+                          issue $ get-in router ([] :data :issue)
+                        div
+                          {} $ :style
+                            merge ui/expand $ {}
+                          comp-issue-page
+                            >> states $ :id issue
+                            , issue
+                          =< nil 100
                       :profile $ comp-profile (:user store) (:data router)
                     comp-login $ >> states :login
                   comp-status-color $ :color store
@@ -84,6 +94,104 @@
               :style $ let
                   size 24
                 {} (:width size) (:height size) (:position :absolute) (:bottom 60) (:left 8) (:background-color color) (:border-radius "\"50%") (:opacity 0.6) (:pointer-events :none)
+        |comp-issue-page $ quote
+          defcomp comp-issue-page (states issue)
+            let
+                content-plugin $ use-prompt (>> states :content)
+                  {} (:title |demo)
+                    :initial $ :content issue
+                desc-plugin $ use-prompt (>> states :desc)
+                  {} (:title |demo)
+                    :initial $ :desc issue
+                    :multiline? true
+              div ({})
+                div
+                  {} $ :style
+                    {} $ :padding "\"4px 8px"
+                  div ({})
+                    <> $ :content issue
+                    =< 16 nil
+                    a $ {} (:style ui/link) (:inner-text "\"Edit")
+                      :on-click $ fn (e d!)
+                        .show content-plugin d! $ fn (text)
+                          when
+                            not $ blank? text
+                            d! :issue/update $ {}
+                              :id $ :id issue
+                              :content text
+                  div ({})
+                    <> $ str "\"Solved: " (:solved? issue)
+                  div ({})
+                    <> $ str "\"Desc: " (:desc issue)
+                    =< 16 nil
+                    a $ {} (:style ui/link) (:inner-text "\"Edit")
+                      :on-click $ fn (e d!)
+                        .show desc-plugin d! $ fn (text)
+                          when
+                            not $ blank? text
+                            d! :issue/update $ {}
+                              :id $ :id issue
+                              :desc text
+                comp-add-log (>> states :add-log) (:id issue)
+                if
+                  empty? $ :logs issue
+                  div ({}) (<> "\"Empty")
+                  div ({})
+                    list-> ({})
+                      -> (:logs issue) (.to-map) (.to-list)
+                        .sort-by $ fn (entry)
+                          negate $ :created-time (last entry)
+                        .map $ fn (entry)
+                          let[] (k log) entry $ [] k
+                            comp-log
+                              >> states $ :id log
+                              :id issue
+                              , log
+                .render content-plugin
+                .render desc-plugin
+        |comp-add-log $ quote
+          defcomp comp-add-log (states issue-id)
+            let
+                add-plugin $ use-prompt (>> states :prompt)
+                  {} (:title |demo) (:multiline? true)
+              div ({}) (<> "\"Logs")
+                a $ {} (:inner-text "\"Add") (:style ui/link)
+                  :on-click $ fn (e d!)
+                    .show add-plugin d! $ fn (text)
+                      if
+                        not $ blank? text
+                        d! :issue/add-log $ {} (:issue-id issue-id) (:content text)
+                .render add-plugin
+        |comp-log $ quote
+          defcomp comp-log (states issue-id log)
+            let
+                content-plugin $ use-prompt (>> states :edit)
+                  {} (:title |demo)
+                    :initial $ :content log
+                    :multiline? true
+              div
+                {} $ :style
+                  {}
+                    :border $ str "\"1px solid " (hsl 0 0 90)
+                    :padding "\"4px 8px"
+                div ({})
+                  comp-md-block (:content log) ({})
+                  =< 16 nil
+                  a $ {} (:style ui/link) (:inner-text "\"Edit")
+                    :on-click $ fn (e d!)
+                      .show content-plugin d! $ fn (text)
+                        when
+                          not $ blank? text
+                          d! :issue/update-log $ {}
+                            :id $ :id log
+                            :issue-id issue-id
+                            :content text
+                div
+                  {} $ :style
+                    {} $ :color (hsl 0 0 80)
+                  <> $ str "\"time: "
+                    -> (:created-time log) (dayjs) (.!format "\"MM-DD HH:mm")
+                .render content-plugin
     |app.schema $ {}
       :ns $ quote (ns app.schema)
       :defs $ {}
@@ -98,10 +206,16 @@
           def database $ {}
             :sessions $ do session ({})
             :users $ do user ({})
+            :issues $ do issue ({})
         |router $ quote
           def router $ {} (:name nil) (:title nil)
             :data $ {}
             :router nil
+        |issue $ quote
+          def issue $ {} (:id nil) (:content nil) (:author-id nil) (:created-time 0) (:touched-time 0) (:desc "\"") (:solved? false)
+            :logs $ do log ({})
+        |log $ quote
+          def log $ {} (:id nil) (:content nil) (:user-id nil) (:created-time 0) (:solution? false)
     |app.server $ {}
       :ns $ quote
         ns app.server $ :require (app.schema :as schema)
@@ -237,7 +351,11 @@
                       , :tasks
                   :router $ assoc router :data
                     case-default (:name router) ({})
-                      :home $ :pages db
+                      :home $ {}
+                        :issues $ :issues db
+                      :issue $ {}
+                        :issue $ get-in db
+                          [] :issues $ :data router
                       :profile $ memof-call twig-members (:sessions db) (:users db)
                   :count $ count (:sessions db)
                   :color $ rand-hex-color!
@@ -251,7 +369,7 @@
               pairs-map
     |app.updater $ {}
       :ns $ quote
-        ns app.updater $ :require (app.updater.session :as session) (app.updater.user :as user) (app.updater.router :as router) (app.schema :as schema)
+        ns app.updater $ :require (app.updater.session :as session) (app.updater.user :as user) (app.updater.router :as router) (app.updater.issue :as issue) (app.schema :as schema)
           respo-message.updater :refer $ update-messages
       :defs $ {}
         |updater $ quote
@@ -260,22 +378,60 @@
                 session $ get-in db ([] :sessions sid)
                 user $ if (some? session)
                   get-in db $ [] :users (:user-id session)
-                f $ case-default op
-                  fn (& args) (println "\"Unknown op:" op) db
-                  :session/connect session/connect
-                  :session/disconnect session/disconnect
-                  :session/remove-message session/remove-message
-                  :user/log-in user/log-in
-                  :user/sign-up user/sign-up
-                  :user/log-out user/log-out
-                  :router/change router/change
+                f $ case-default op default-up (:session/connect session/connect) (:session/disconnect session/disconnect) (:session/remove-message session/remove-message) (:user/log-in user/log-in) (:user/sign-up user/sign-up) (:user/log-out user/log-out) (:router/change router/change) (:issue/add issue/add-issue) (:issue/del issue/del-issue) (:issue/update issue/update-issue) (:issue/touch issue/touch-issue) (:issue/add-log issue/add-issue-log) (:issue/update-log issue/update-issue-log) (:issue/del-log issue/del-issue-log)
               f db op-data sid op-id op-time
+        |default-up $ quote
+          defn default-up (db op & args) (println "\"Unknown op:" op) db
     |app.twig.user $ {}
       :ns $ quote
         ns app.twig.user $ :require
       :defs $ {}
         |twig-user $ quote
           defn twig-user (user) (dissoc user :password)
+    |app.updater.issue $ {}
+      :ns $ quote
+        ns app.updater.issue $ :require (app.schema :as schema)
+      :defs $ {}
+        |add-issue $ quote
+          defn add-issue (db op-data sid op-id op-time)
+            let
+                user-id $ get-in db ([] :sessions sid :user-id)
+              assoc-in db ([] :issues op-id)
+                merge schema/issue $ {} (:id op-id)
+                  :content $ either op-data "\"default content"
+                  :author-id user-id
+                  :created-time op-time
+                  :touched-time op-time
+                  :desc "\"..."
+        |update-issue $ quote
+          defn update-issue (db op-data sid op-id op-time)
+            let
+                issue-id $ :id op-data
+                data $ dissoc op-data :id
+              update-in db ([] :issues issue-id)
+                fn (issue) (merge issue data)
+        |del-issue $ quote
+          defn del-issue (db op-data sid op-id op-time) (println "\"todo") db
+        |touch-issue $ quote
+          defn touch-issue (db op-data sid op-id op-time) (println "\"TODO") db
+        |add-issue-log $ quote
+          defn add-issue-log (db op-data sid op-id op-time)
+            let
+                issue-id $ :issue-id op-data
+                content $ :content op-data
+                user-id $ get-in db ([] :sessions sid :user-id)
+              assoc-in db ([] :issues issue-id :logs op-id)
+                merge schema/log $ {} (:id op-id) (:content content) (:user-id user-id) (:created-time op-time)
+        |update-issue-log $ quote
+          defn update-issue-log (db op-data sid op-id op-time)
+            let
+                issue-id $ :issue-id op-data
+                log-id $ :id op-data
+                data $ -> op-data (dissoc :id) (dissoc :issue-id)
+              update-in db ([] :issues issue-id :logs log-id)
+                fn (log) (merge log data)
+        |del-issue-log $ quote
+          defn del-issue-log (db op-data sid op-id op-time) (println "\"TODO") db
     |app.updater.user $ {}
       :ns $ quote
         ns app.updater.user $ :require
@@ -376,6 +532,48 @@
                     :on-click $ fn (e dispatch!) (dispatch! :user/log-out nil)
                       .!removeItem js/localStorage $ :storage-key config/site
                   <> "\"Log out"
+    |app.comp.issue $ {}
+      :ns $ quote
+        ns app.comp.issue $ :require
+          respo-ui.core :refer $ hsl
+          respo-ui.core :as ui
+          respo.core :refer $ defcomp <> >> div span button input pre list-> a
+          respo.comp.space :refer $ =<
+          app.schema :as schema
+          app.config :as config
+          "\"dayjs" :default dayjs
+          respo-alerts.core :refer $ use-prompt
+      :defs $ {}
+        |comp-issues-list $ quote
+          defcomp comp-issues-list (states issues)
+            div ({})
+              list-> ({})
+                -> issues (.to-map)
+                  .map-list $ fn (entry)
+                    let[] (k issue) entry $ [] k (:touched-time issue)
+                      comp-issue (>> states k) issue
+                  .sort-by $ fn (triple)
+                    negate $ nth triple 1
+                  .map $ fn (triple)
+                    [] (nth triple 0) (nth triple 2)
+        |comp-issue $ quote
+          defcomp comp-issue (states issue)
+            div
+              {} $ :style
+                {} (:min-height 40)
+                  :border-bottom $ str "\"1px solid " (hsl 0 0 94)
+              div
+                {} $ :on-click
+                  fn (e d!)
+                    d! :router/change $ {} (:name :issue)
+                      :data $ :id issue
+                <> $ :content issue
+              div
+                {} $ :style
+                  {} $ :color (hsl 0 0 80)
+                <> $ -> (:created-time issue) (dayjs) (.!format "\"MM-DD HH:mm")
+                =< 16 nil
+                <> $ str "\"Solved: " (:solved? issue)
     |app.comp.login $ {}
       :ns $ quote
         ns app.comp.login $ :require
@@ -434,30 +632,44 @@
           respo.util.format :refer $ hsl
           respo-ui.core :as ui
           respo.comp.space :refer $ =<
-          respo.core :refer $ defcomp <> span div
+          respo.core :refer $ defcomp <> >> a span div
           app.config :as config
+          respo-alerts.core :refer $ use-prompt
       :defs $ {}
         |comp-navigation $ quote
-          defcomp comp-navigation (logged-in? count-members)
-            div
-              {} $ :style
-                merge ui/row-center $ {} (:height 48) (:justify-content :space-between) (:padding "\"0 16px") (:font-size 16)
-                  :border-bottom $ str "\"1px solid " (hsl 0 0 0 0.1)
-                  :font-family ui/font-fancy
+          defcomp comp-navigation (states logged-in? count-members)
+            let
+                add-plugin $ use-prompt (>> states :prompt)
+                  {} (:title |demo) (:multiline? true)
               div
-                {}
-                  :on-click $ fn (e d!)
-                    d! :router/change $ {} (:name :home)
-                  :style $ {} (:cursor :pointer)
-                <> (:title config/site) nil
-              div
-                {}
-                  :style $ {} (:cursor "\"pointer")
-                  :on-click $ fn (e d!)
-                    d! :router/change $ {} (:name :profile)
-                <> $ if logged-in? "\"Me" "\"Guest"
-                =< 8 nil
-                <> count-members
+                {} $ :style
+                  merge ui/row-center $ {} (:height 48) (:justify-content :space-between) (:padding "\"0 16px") (:font-size 16)
+                    :border-bottom $ str "\"1px solid " (hsl 0 0 0 0.1)
+                    :font-family ui/font-fancy
+                div
+                  {} $ :style ui/row-middle
+                  div
+                    {}
+                      :on-click $ fn (e d!)
+                        d! :router/change $ {} (:name :home)
+                      :style $ {} (:cursor :pointer)
+                    <> (:title config/site) nil
+                  =< 8 nil
+                  a $ {} (:inner-text "\"Add") (:style ui/link)
+                    :on-click $ fn (e d!)
+                      .show add-plugin d! $ fn (text)
+                        if
+                          not $ blank? text
+                          d! :issue/add text
+                div
+                  {}
+                    :style $ {} (:cursor "\"pointer")
+                    :on-click $ fn (e d!)
+                      d! :router/change $ {} (:name :profile)
+                  <> $ if logged-in? "\"Me" "\"Guest"
+                  =< 8 nil
+                  <> count-members
+                .render add-plugin
     |app.updater.router $ {}
       :ns $ quote (ns app.updater.router)
       :defs $ {}
@@ -561,4 +773,4 @@
         |dev? $ quote
           def dev? $ = "\"dev" (get-env "\"mode")
         |site $ quote
-          def site $ {} (:port 5021) (:title "\"Calcium.") (:icon "\"http://cdn.tiye.me/logo/cumulo.png") (:theme "\"#eeeeff") (:storage-key "\"calcium-storage") (:storage-file "\"storage.cirru")
+          def site $ {} (:port 11028) (:title "\"Walnut log") (:icon "\"http://cdn.tiye.me/logo/cumulo.png") (:theme "\"#eeeeff") (:storage-key "\"walnut-log") (:storage-file "\"storage.cirru")

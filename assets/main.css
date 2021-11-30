@@ -28,3 +28,9 @@ body * {
 ::-webkit-resizer {
   background-color:transparent;
 }
+
+.md-code-block {
+  background-color: hsla(0, 0%, 97%, 1.0);
+  padding: 4px 8px;
+  font-family: Source Code Pro, Menlo, monospace;
+}
