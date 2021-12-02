@@ -109,7 +109,8 @@
                   {} $ :style
                     {} $ :padding "\"4px 8px"
                   div ({})
-                    <> $ :content issue
+                    <> (:content issue)
+                      {} $ :font-weight :bold
                     =< 16 nil
                     a $ {} (:style ui/link) (:inner-text "\"Edit")
                       :on-click $ fn (e d!)
@@ -154,7 +155,10 @@
             let
                 add-plugin $ use-prompt (>> states :prompt)
                   {} (:title |demo) (:multiline? true)
-              div ({}) (<> "\"Logs")
+              div
+                {} $ :style
+                  {} (:padding "\"4px 8px") (:font-family ui/font-fancy)
+                <> "\"Logs"
                 a $ {} (:inner-text "\"Add") (:style ui/link)
                   :on-click $ fn (e d!)
                     .show add-plugin d! $ fn (text)
@@ -172,10 +176,14 @@
               div
                 {} $ :style
                   {}
-                    :border $ str "\"1px solid " (hsl 0 0 90)
+                    :border-bottom $ str "\"1px solid " (hsl 0 0 90)
                     :padding "\"4px 8px"
                 div ({})
                   comp-md-block (:content log) ({})
+                div
+                  {} $ :style
+                    {} $ :color (hsl 0 0 80)
+                  <> $ -> (:created-time log) (dayjs) (.!format "\"MM-DD HH:mm")
                   =< 16 nil
                   a $ {} (:style ui/link) (:inner-text "\"Edit")
                     :on-click $ fn (e d!)
@@ -186,11 +194,6 @@
                             :id $ :id log
                             :issue-id issue-id
                             :content text
-                div
-                  {} $ :style
-                    {} $ :color (hsl 0 0 80)
-                  <> $ str "\"time: "
-                    -> (:created-time log) (dayjs) (.!format "\"MM-DD HH:mm")
                 .render content-plugin
     |app.schema $ {}
       :ns $ quote (ns app.schema)
@@ -546,27 +549,42 @@
       :defs $ {}
         |comp-issues-list $ quote
           defcomp comp-issues-list (states issues)
-            div ({})
-              list-> ({})
-                -> issues (.to-map)
-                  .map-list $ fn (entry)
-                    let[] (k issue) entry $ [] k (:touched-time issue)
-                      comp-issue (>> states k) issue
-                  .sort-by $ fn (triple)
-                    negate $ nth triple 1
-                  .map $ fn (triple)
-                    [] (nth triple 0) (nth triple 2)
+            let
+                add-plugin $ use-prompt (>> states :prompt)
+                  {} (:title |demo) (:multiline? true)
+              div ({})
+                div
+                  {} $ :style ui/row-parted
+                  span $ {}
+                  a $ {} (:inner-text "\"Add") (:style ui/link)
+                    :on-click $ fn (e d!)
+                      .show add-plugin d! $ fn (text)
+                        if
+                          not $ blank? text
+                          d! :issue/add text
+                list-> ({})
+                  -> issues (.to-map)
+                    .map-list $ fn (entry)
+                      let[] (k issue) entry $ [] k (:touched-time issue)
+                        comp-issue (>> states k) issue
+                    .sort-by $ fn (triple)
+                      negate $ nth triple 1
+                    .map $ fn (triple)
+                      [] (nth triple 0) (nth triple 2)
+                .render add-plugin
         |comp-issue $ quote
           defcomp comp-issue (states issue)
             div
               {} $ :style
                 {} (:min-height 40)
                   :border-bottom $ str "\"1px solid " (hsl 0 0 94)
+                  :padding "\"4px 8px"
               div
-                {} $ :on-click
-                  fn (e d!)
+                {}
+                  :on-click $ fn (e d!)
                     d! :router/change $ {} (:name :issue)
                       :data $ :id issue
+                  :style $ {} (:cursor :pointer)
                 <> $ :content issue
               div
                 {} $ :style
@@ -638,38 +656,28 @@
       :defs $ {}
         |comp-navigation $ quote
           defcomp comp-navigation (states logged-in? count-members)
-            let
-                add-plugin $ use-prompt (>> states :prompt)
-                  {} (:title |demo) (:multiline? true)
+            div
+              {} $ :style
+                merge ui/row-center $ {} (:height 48) (:justify-content :space-between) (:padding "\"0 16px") (:font-size 16)
+                  :border-bottom $ str "\"1px solid " (hsl 0 0 0 0.1)
+                  :font-family ui/font-fancy
               div
-                {} $ :style
-                  merge ui/row-center $ {} (:height 48) (:justify-content :space-between) (:padding "\"0 16px") (:font-size 16)
-                    :border-bottom $ str "\"1px solid " (hsl 0 0 0 0.1)
-                    :font-family ui/font-fancy
-                div
-                  {} $ :style ui/row-middle
-                  div
-                    {}
-                      :on-click $ fn (e d!)
-                        d! :router/change $ {} (:name :home)
-                      :style $ {} (:cursor :pointer)
-                    <> (:title config/site) nil
-                  =< 8 nil
-                  a $ {} (:inner-text "\"Add") (:style ui/link)
-                    :on-click $ fn (e d!)
-                      .show add-plugin d! $ fn (text)
-                        if
-                          not $ blank? text
-                          d! :issue/add text
+                {} $ :style ui/row-middle
                 div
                   {}
-                    :style $ {} (:cursor "\"pointer")
                     :on-click $ fn (e d!)
-                      d! :router/change $ {} (:name :profile)
-                  <> $ if logged-in? "\"Me" "\"Guest"
-                  =< 8 nil
-                  <> count-members
-                .render add-plugin
+                      d! :router/change $ {} (:name :home)
+                    :style $ {} (:cursor :pointer)
+                  <> (:title config/site) nil
+                =< 8 nil
+              div
+                {}
+                  :style $ {} (:cursor "\"pointer")
+                  :on-click $ fn (e d!)
+                    d! :router/change $ {} (:name :profile)
+                <> $ if logged-in? "\"Me" "\"Guest"
+                =< 8 nil
+                <> count-members
     |app.updater.router $ {}
       :ns $ quote (ns app.updater.router)
       :defs $ {}

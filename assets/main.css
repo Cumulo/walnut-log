@@ -18,7 +18,8 @@ body * {
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: hsla(200,100%,76%,0.8);
+  background-color: hsla(160,40%,70%,0.4);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-corner {
@@ -30,7 +31,15 @@ body * {
 }
 
 .md-code-block {
-  background-color: hsla(0, 0%, 97%, 1.0);
+  border-radius: 4px;
+  border: 1px solid #eee;
+  background-color: hsla(0, 0%, 99%, 1.0);
   padding: 4px 8px;
   font-family: Source Code Pro, Menlo, monospace;
+  line-height: 21px;
+  font-size: 13px;
+  color: #888;
+
+  overflow: auto;
+  max-height: 30vh;
 }
