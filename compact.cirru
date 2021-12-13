@@ -80,14 +80,15 @@
             div $ {}
               :style $ {}
                 :background-image $ str "\"url(" (:icon config/site) "\")"
-                :width 128
-                :height 128
+                :width 500
+                :height 500
                 :background-size :contain
+                :border-radius "\"50%"
             div
               {}
                 :style $ {} (:cursor :pointer) (:line-height "\"32px")
                 :on-click $ fn (e d!) (d! :effect/connect nil)
-              <> "\"No connection..." $ {} (:font-family ui/font-fancy) (:font-size 24)
+              <> "\"No connection..." $ {} (:font-family ui/font-fancy) (:font-size 24) (:color :white)
         |comp-status-color $ quote
           defcomp comp-status-color (color)
             div $ {}
@@ -661,6 +662,8 @@
                 merge ui/row-center $ {} (:height 48) (:justify-content :space-between) (:padding "\"0 16px") (:font-size 16)
                   :border-bottom $ str "\"1px solid " (hsl 0 0 0 0.1)
                   :font-family ui/font-fancy
+                  :background-color "\"hsl(2deg 76% 36%)"
+                  :color :white
               div
                 {} $ :style ui/row-middle
                 div
@@ -781,4 +784,4 @@
         |dev? $ quote
           def dev? $ = "\"dev" (get-env "\"mode")
         |site $ quote
-          def site $ {} (:port 11028) (:title "\"Walnut log") (:icon "\"http://cdn.tiye.me/logo/cumulo.png") (:theme "\"#eeeeff") (:storage-key "\"walnut-log") (:storage-file "\"storage.cirru")
+          def site $ {} (:port 11028) (:title "\"Walnut log") (:icon "\"https://cdn.tiye.me/logo/walnut.jpeg") (:theme "\"hsl(2deg 76% 36%)") (:storage-key "\"walnut-log") (:storage-file "\"storage.cirru")
