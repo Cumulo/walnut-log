@@ -41,27 +41,34 @@
                 router-data $ :data router
               if (nil? store) (comp-offline)
                 div
-                  {} $ :style (merge ui/global ui/fullscreen ui/column)
+                  {} $ :style
+                    merge ui/global ui/fullscreen ui/column $ {}
+                      :background-color $ hsl 0 0 96
                   comp-navigation (>> states :nav) (:logged-in? store) (:count store)
-                  if (:logged-in? store)
-                    case-default (:name router) (<> router)
-                      :home $ div
-                        {} $ :style
-                          merge ui/expand $ {} (:padding "\"8px")
-                        comp-issues-list (>> states :list)
-                          get-in router $ [] :data :issues
-                        =< nil 100
-                      :issue $ let
-                          issue $ get-in router ([] :data :issue)
-                        div
-                          {} $ :style
-                            merge ui/expand $ {}
-                          comp-issue-page
-                            >> states $ :id issue
-                            , issue
-                          =< nil 100
-                      :profile $ comp-profile (:user store) (:data router)
-                    comp-login $ >> states :login
+                  div
+                    {} $ :style ui/expand
+                    div
+                      {} $ :style
+                        merge ui/expand $ {} (:max-width 960) (:margin :auto)
+                      if (:logged-in? store)
+                        case-default (:name router) (<> router)
+                          :home $ div
+                            {} $ :style
+                              merge ui/expand $ {} (:padding "\"8px")
+                            comp-issues-list (>> states :list)
+                              get-in router $ [] :data :issues
+                            =< nil 100
+                          :issue $ let
+                              issue $ get-in router ([] :data :issue)
+                            div
+                              {} $ :style
+                                merge ui/expand $ {}
+                              comp-issue-page
+                                >> states $ :id issue
+                                , issue
+                              =< nil 100
+                          :profile $ comp-profile (:user store) (:data router)
+                        comp-login $ >> states :login
                   comp-status-color $ :color store
                   when dev? $ comp-inspect "\"Store" store
                     {} (:bottom 0) (:left 0) (:max-width "\"100%")
@@ -99,16 +106,18 @@
           defcomp comp-issue-page (states issue)
             let
                 content-plugin $ use-prompt (>> states :content)
-                  {} (:title |demo)
+                  {} (:text |Topic:)
                     :initial $ :content issue
                 desc-plugin $ use-prompt (>> states :desc)
-                  {} (:title |demo)
+                  {} (:text "|Some details")
                     :initial $ :desc issue
                     :multiline? true
-              div ({})
+              div
+                {} $ :style
+                  {} $ :padding "\"16px 0px"
                 div
                   {} $ :style
-                    {} $ :padding "\"4px 8px"
+                    {} (:padding "\"8px 8px") (:background-color :white)
                   div ({})
                     <> (:content issue)
                       {} $ :font-weight :bold
@@ -137,7 +146,12 @@
                 comp-add-log (>> states :add-log) (:id issue)
                 if
                   empty? $ :logs issue
-                  div ({}) (<> "\"Empty")
+                  div
+                    {} $ :style
+                      {} (:padding "\"0px 8px")
+                        :color $ hsl 0 0 60
+                        :font-style :italic
+                    <> "\"Empty"
                   div ({})
                     list-> ({})
                       -> (:logs issue) (.to-map) (.to-list)
@@ -155,7 +169,7 @@
           defcomp comp-add-log (states issue-id)
             let
                 add-plugin $ use-prompt (>> states :prompt)
-                  {} (:title |demo) (:multiline? true)
+                  {} (:text "|New log or new comment:") (:multiline? true)
               div
                 {} $ :style
                   {} (:padding "\"4px 8px") (:font-family ui/font-fancy)
@@ -179,6 +193,8 @@
                   {}
                     :border-bottom $ str "\"1px solid " (hsl 0 0 90)
                     :padding "\"4px 8px"
+                    :background-color :white
+                    :margin-bottom 8
                 div ({})
                   comp-md-block (:content log) ({})
                 div
@@ -552,17 +568,19 @@
           defcomp comp-issues-list (states issues)
             let
                 add-plugin $ use-prompt (>> states :prompt)
-                  {} (:title |demo) (:multiline? true)
-              div ({})
+                  {} (:text "|New topic name:") (; :multiline? true)
+              div
+                {} $ :style ui/column
                 div
                   {} $ :style ui/row-parted
-                  span $ {}
-                  a $ {} (:inner-text "\"Add") (:style ui/link)
+                  button $ {} (:inner-text "\"New Topic") (:style ui/button)
                     :on-click $ fn (e d!)
                       .show add-plugin d! $ fn (text)
                         if
                           not $ blank? text
                           d! :issue/add text
+                  span $ {}
+                =< nil 8
                 list-> ({})
                   -> issues (.to-map)
                     .map-list $ fn (entry)
@@ -580,6 +598,8 @@
                 {} (:min-height 40)
                   :border-bottom $ str "\"1px solid " (hsl 0 0 94)
                   :padding "\"4px 8px"
+                  :margin-bottom 8
+                  :background-color $ hsl 0 0 100
               div
                 {}
                   :on-click $ fn (e d!)
