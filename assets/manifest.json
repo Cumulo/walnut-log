@@ -3,8 +3,8 @@
   "name": "Walnut log",
   "icons": [
     {
-      "src": "http://cdn.tiye.me/logo/worktools.png",
-      "sizes": "400x400"
+      "src": "https://cdn.tiye.me/logo/walnut.jpeg",
+      "sizes": "450x450"
     }
   ],
   "start_url": "index.html",
