@@ -138,13 +138,19 @@
                               :content text
                   div ({})
                     comp-solved-tag $ :solved? issue
-                    a $ {} (:inner-text "\"Toggle") (:style ui/link)
+                    =< 8 nil
+                    a $ {} (:inner-text "\"Toggle")
+                      :style $ merge ui/link
+                        {} $ :user-select :none
                       :on-click $ fn (e d!)
                         d! :issue/toggle-solved $ :id issue
                   div ({})
                     <> $ str "\"Desc: " (:desc issue)
                     =< 16 nil
-                    a $ {} (:style ui/link) (:inner-text "\"Edit")
+                    a $ {}
+                      :style $ merge ui/link
+                        {} $ :user-select :none
+                      :inner-text "\"Edit"
                       :on-click $ fn (e d!)
                         .show desc-plugin d! $ fn (text)
                           when
@@ -745,14 +751,14 @@
                     {}
                       :on-click $ fn (e d!)
                         d! :router/change $ {} (:name :home)
-                      :style $ {} (:cursor :pointer)
+                      :style $ {} (:cursor :pointer) (:user-select :none)
                     <> (:title config/site) nil
                   =< 32 nil
                   div
                     {}
                       :on-click $ fn (e d!)
                         d! :router/change $ {} (:name :archived)
-                      :style $ {} (:cursor :pointer) (:font-size 13)
+                      :style $ {} (:cursor :pointer) (:font-size 13) (:user-select :none)
                     <> "\"Archived" nil
                 div
                   {}
