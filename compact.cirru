@@ -23,7 +23,7 @@
           app.config :refer $ dev?
           app.schema :as schema
           app.config :as config
-          app.comp.issue :refer $ comp-issues-list
+          app.comp.issue :refer $ comp-issues-list comp-archived-list comp-solved-tag comp-time
           respo-alerts.core :refer $ use-prompt
           "\"dayjs" :default dayjs
           respo-md.comp.md :refer $ comp-md-block
@@ -56,6 +56,12 @@
                             {} $ :style
                               merge ui/expand $ {} (:padding "\"8px")
                             comp-issues-list (>> states :list)
+                              get-in router $ [] :data :issues
+                            =< nil 100
+                          :archived $ div
+                            {} $ :style
+                              merge ui/expand $ {} (:padding "\"8px")
+                            comp-archived-list (>> states :list)
                               get-in router $ [] :data :issues
                             =< nil 100
                           :issue $ let
@@ -131,11 +137,20 @@
                               :id $ :id issue
                               :content text
                   div ({})
-                    <> $ str "\"Solved: " (:solved? issue)
+                    comp-solved-tag $ :solved? issue
+                    =< 8 nil
+                    a $ {} (:inner-text "\"Toggle")
+                      :style $ merge ui/link
+                        {} $ :user-select :none
+                      :on-click $ fn (e d!)
+                        d! :issue/toggle-solved $ :id issue
                   div ({})
                     <> $ str "\"Desc: " (:desc issue)
                     =< 16 nil
-                    a $ {} (:style ui/link) (:inner-text "\"Edit")
+                    a $ {}
+                      :style $ merge ui/link
+                        {} $ :user-select :none
+                      :inner-text "\"Edit"
                       :on-click $ fn (e d!)
                         .show desc-plugin d! $ fn (text)
                           when
@@ -200,7 +215,7 @@
                 div
                   {} $ :style
                     {} $ :color (hsl 0 0 80)
-                  <> $ -> (:created-time log) (dayjs) (.!format "\"MM-DD HH:mm")
+                  comp-time $ :created-time log
                   =< 16 nil
                   a $ {} (:style ui/link) (:inner-text "\"Edit")
                     :on-click $ fn (e d!)
@@ -372,7 +387,12 @@
                   :router $ assoc router :data
                     case-default (:name router) ({})
                       :home $ {}
-                        :issues $ :issues db
+                        :issues $ -> (:issues db)
+                          .filter-kv $ fn (k v)
+                            not $ :solved? v
+                      :archived $ {}
+                        :issues $ -> (:issues db)
+                          .filter-kv $ fn (k v) (:solved? v)
                       :issue $ {}
                         :issue $ get-in db
                           [] :issues $ :data router
@@ -398,7 +418,7 @@
                 session $ get-in db ([] :sessions sid)
                 user $ if (some? session)
                   get-in db $ [] :users (:user-id session)
-                f $ case-default op default-up (:session/connect session/connect) (:session/disconnect session/disconnect) (:session/remove-message session/remove-message) (:user/log-in user/log-in) (:user/sign-up user/sign-up) (:user/log-out user/log-out) (:router/change router/change) (:issue/add issue/add-issue) (:issue/del issue/del-issue) (:issue/update issue/update-issue) (:issue/touch issue/touch-issue) (:issue/add-log issue/add-issue-log) (:issue/update-log issue/update-issue-log) (:issue/del-log issue/del-issue-log)
+                f $ case-default op default-up (:session/connect session/connect) (:session/disconnect session/disconnect) (:session/remove-message session/remove-message) (:user/log-in user/log-in) (:user/sign-up user/sign-up) (:user/log-out user/log-out) (:router/change router/change) (:issue/add issue/add-issue) (:issue/del issue/del-issue) (:issue/update issue/update-issue) (:issue/toggle-solved issue/toggle-solved) (:issue/touch issue/touch-issue) (:issue/add-log issue/add-issue-log) (:issue/update-log issue/update-issue-log) (:issue/del-log issue/del-issue-log)
               f db op-data sid op-id op-time
         |default-up $ quote
           defn default-up (db op & args) (println "\"Unknown op:" op) db
@@ -452,6 +472,11 @@
                 fn (log) (merge log data)
         |del-issue-log $ quote
           defn del-issue-log (db op-data sid op-id op-time) (println "\"TODO") db
+        |toggle-solved $ quote
+          defn toggle-solved (db op-data sid op-id op-time)
+            let
+                issue-id op-data
+              update-in db ([] :issues issue-id :solved?) not
     |app.updater.user $ {}
       :ns $ quote
         ns app.updater.user $ :require
@@ -557,7 +582,7 @@
         ns app.comp.issue $ :require
           respo-ui.core :refer $ hsl
           respo-ui.core :as ui
-          respo.core :refer $ defcomp <> >> div span button input pre list-> a
+          respo.core :refer $ defcomp <> >> div span button input pre list-> a span
           respo.comp.space :refer $ =<
           app.schema :as schema
           app.config :as config
@@ -610,9 +635,42 @@
               div
                 {} $ :style
                   {} $ :color (hsl 0 0 80)
-                <> $ -> (:created-time issue) (dayjs) (.!format "\"MM-DD HH:mm")
+                comp-time $ :created-time issue
                 =< 16 nil
-                <> $ str "\"Solved: " (:solved? issue)
+                comp-solved-tag $ :solved? issue
+        |comp-archived-list $ quote
+          defcomp comp-archived-list (states issues)
+            div
+              {} $ :style ui/column
+              div $ {} (:style ui/row-parted)
+              =< nil 8
+              list-> ({})
+                -> issues (.to-map)
+                  .map-list $ fn (entry)
+                    let[] (k issue) entry $ [] k (:touched-time issue)
+                      comp-issue (>> states k) issue
+                  .sort-by $ fn (triple)
+                    negate $ nth triple 1
+                  .map $ fn (triple)
+                    [] (nth triple 0) (nth triple 2)
+        |comp-solved-tag $ quote
+          defcomp comp-solved-tag (solved?)
+            div
+              {} $ :style
+                {} (:display :inline-block)
+                  :background-color $ if solved? (hsl 200 80 70) (hsl 140 80 80)
+                  :color $ hsl 0 0 100
+                  :font-size 10
+                  :padding "\"0 8px"
+                  :border-radius 6
+                  :line-height "\"18px"
+              <> $ if solved? "\"Solved" "\"Open"
+        |comp-time $ quote
+          defcomp comp-time (timestamp)
+            span
+              {} $ :style
+                {} $ :font-family ui/font-fancy
+              <> $ -> timestamp (dayjs) (.!format "\"MM-DD HH:mm")
     |app.comp.login $ {}
       :ns $ quote
         ns app.comp.login $ :require
@@ -679,28 +737,37 @@
           defcomp comp-navigation (states logged-in? count-members)
             div
               {} $ :style
-                merge ui/row-center $ {} (:height 48) (:justify-content :space-between) (:padding "\"0 16px") (:font-size 16)
+                merge ui/row-middle $ {} (:height 48) (:justify-content :space-between) (:padding "\"0 16px") (:font-size 16)
                   :border-bottom $ str "\"1px solid " (hsl 0 0 0 0.1)
                   :font-family ui/font-fancy
                   :background-color "\"hsl(2deg 76% 36%)"
                   :color :white
               div
-                {} $ :style ui/row-middle
+                {} $ :style
+                  merge ui/expand ui/row-parted $ {} (:max-width 960) (:margin :auto)
+                div
+                  {} $ :style ui/row-middle
+                  div
+                    {}
+                      :on-click $ fn (e d!)
+                        d! :router/change $ {} (:name :home)
+                      :style $ {} (:cursor :pointer) (:user-select :none)
+                    <> (:title config/site) nil
+                  =< 32 nil
+                  div
+                    {}
+                      :on-click $ fn (e d!)
+                        d! :router/change $ {} (:name :archived)
+                      :style $ {} (:cursor :pointer) (:font-size 13) (:user-select :none)
+                    <> "\"Archived" nil
                 div
                   {}
+                    :style $ {} (:cursor "\"pointer")
                     :on-click $ fn (e d!)
-                      d! :router/change $ {} (:name :home)
-                    :style $ {} (:cursor :pointer)
-                  <> (:title config/site) nil
-                =< 8 nil
-              div
-                {}
-                  :style $ {} (:cursor "\"pointer")
-                  :on-click $ fn (e d!)
-                    d! :router/change $ {} (:name :profile)
-                <> $ if logged-in? "\"Me" "\"Guest"
-                =< 8 nil
-                <> count-members
+                      d! :router/change $ {} (:name :profile)
+                  <> $ if logged-in? "\"Me" "\"Guest"
+                  =< 8 nil
+                  <> count-members
     |app.updater.router $ {}
       :ns $ quote (ns app.updater.router)
       :defs $ {}
