@@ -689,7 +689,8 @@
                 cursor $ :cursor states
                 state $ or (:data states) initial-state
               div
-                {} $ :style (merge ui/flex ui/center)
+                {} $ :style
+                  merge ui/flex ui/center $ {} (:padding "\"20vh 0")
                 div ({})
                   div
                     {} $ :style ({})
