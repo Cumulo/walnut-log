@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "@calcit/procs": "^0.6.29",
+    "@calcit/procs": "^0.8.56",
     "shortid": "^2.2.16"
   },
   "scripts": {
@@ -10,9 +10,11 @@
   },
   "devDependencies": {
     "bottom-tip": "^0.1.5",
-    "dayjs": "^1.11.7",
+    "cirru-color": "^0.2.4",
+    "copy-text-to-clipboard": "^3.2.0",
+    "dayjs": "^1.11.11",
     "url-parse": "^1.5.10",
-    "vite": "^4.3.8"
+    "vite": "^5.3.1"
   },
   "version": "0.0.1"
 }
