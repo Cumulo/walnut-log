@@ -21,7 +21,8 @@
                 url-obj $ url-parse js/location.href true
                 host $ either (-> url-obj .-query .-host) js/location.hostname
                 port $ either (-> url-obj .-query .-port) (:port config/site)
-              ws-connect! (str "\"ws://" host "\":" port)
+              ws-connect!
+                if config/dev? (str "\"ws://" host "\":" port) (str "\"wss://" host "\"/ws")
                 {}
                   :on-open $ fn (event) (simulate-login!)
                   :on-close $ fn (event) (reset! *store nil) (js/console.error "\"Lost connection!")
@@ -79,7 +80,10 @@
                 raw $ js/localStorage.getItem (:storage-key config/site)
               if (some? raw)
                 do (println "\"Found storage.")
-                  dispatch! $ :: :user/log-in (parse-cirru-edn raw)
+                  tag-match (parse-cirru-edn raw)
+                      :auth username password
+                      dispatch! $ :: :user/log-in username password
+                    _ $ eprintln "\"unknown data" raw
                 do $ println "\"Found no storage."
       :ns $ %{} :CodeEntry (:doc |)
         :code $ quote
@@ -469,7 +473,7 @@
               fn (e dispatch!)
                 dispatch! $ :: (if signup? :user/sign-up :user/log-in) username password
                 js/localStorage.setItem (:storage-key config/site)
-                  format-cirru-edn $ [] username password
+                  format-cirru-edn $ :: :auth username password
       :ns $ %{} :CodeEntry (:doc |)
         :code $ quote
           ns app.comp.login $ :require
@@ -817,7 +821,7 @@
                     session/connect db sid op-id op-time
                   (:session/disconnect) (session/disconnect db sid op-id op-time)
                   (:session/remove-message op-data) (session/remove-message db op-data sid op-id op-time)
-                  (:user/log-in op-data) (user/log-in db op-data sid op-id op-time)
+                  (:user/log-in username password) (user/log-in db username password sid op-id op-time)
                   (:user/sign-up username password) (user/sign-up db username password sid op-id op-time)
                   (:user/log-out op-data) (user/log-out db op-data sid op-id op-time)
                   (:router/change op-data) (router/change db op-data sid op-id op-time)
@@ -924,10 +928,8 @@
       :defs $ {}
         |log-in $ %{} :CodeEntry (:doc |)
           :code $ quote
-            defn log-in (db op-data sid op-id op-time) (println "\"OP DATA:" db op-data)
-              let-sugar
-                    [] username password
-                    , op-data
+            defn log-in (db username password sid op-id op-time) (; println "\"OP DATA:" db username)
+              let
                   maybe-user $ -> (:users db) (vals) (.to-list)
                     find $ fn (user)
                       and $ = username (:name user)
